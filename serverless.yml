@@ -1,0 +1,70 @@
+service:
+  name: message-api
+
+custom:
+  fullServiceName: ${self:service.name}-${self:provider.stage}
+  esbuild:
+    bundle: true
+    minify: false
+
+plugins:
+  - serverless-offline
+  - serverless-esbuild
+  - serverless-pseudo-parameters
+
+provider:
+  name: aws
+  runtime: nodejs16.x
+  timeout: 30
+  region: eu-west-2
+  stage: ${opt:stage, 'test'}
+  environment:
+    STAGE: ${self:provider.stage}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource:
+        - "arn:aws:dynamodb:#{AWS::Region}:*:table/${self:provider.stage}-messages"
+        - "arn:aws:dynamodb:#{AWS::Region}:*:table/${self:provider.stage}-messages/index/*"
+
+functions:
+  post-message-api:
+    name: ${self:custom.fullServiceName}-post-message-api
+    handler: ./src/handlers/post-message.handler
+    description: Creates a new message
+    events:
+      - http:
+          path: v1/post-message
+          method: post
+  get-messages-api:
+    name: ${self:custom.fullServiceName}-get-messages-api
+    handler: ./src/handlers/get-messages.handler
+    description: Gets all messages
+    events:
+      - http:
+          path: v1/get-messages
+          method: get
+
+resources:
+  Resources:
+    DynamoDBMessagesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.stage}-messages
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+
+
