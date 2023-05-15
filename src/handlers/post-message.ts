@@ -10,7 +10,14 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<{statusCode:
 
     const message = JSON.parse(event.body).message;
 
-    const client = new AWS.DynamoDB.DocumentClient();
+    if (!message) {
+      return {
+        statusCode: 400,
+        body: "No message.",
+      };
+    }
+
+    const client = new AWS.DynamoDB.DocumentClient({region: 'eu-west-2'}); // Region needed as aws-sdk doesn't seem to read from .aws/config correctly.
 
     await client.put({
       TableName: `${STAGE}-messages`,
@@ -20,9 +27,14 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<{statusCode:
       },
     }).promise();
 
+    const response = {
+      message,
+      success: true,
+    };
+
     return {
       statusCode: 200,
-      body: "Successful POST",
+      body: JSON.stringify(response),
     };
   } catch (error) {
     return {

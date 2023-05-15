@@ -7,12 +7,14 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
   try {
     console.log(JSON.stringify(event.body));
 
-    const client = new AWS.DynamoDB.DocumentClient();
+    const client = new AWS.DynamoDB.DocumentClient({region: 'eu-west-2'}); // Region needed as aws-sdk doesn't seem to read from .aws/config correctly.
 
     const { Items: items } = await client.scan({
       TableName: `${STAGE}-messages`,
       ProjectionExpression: "id, message",
     }).promise();
+
+    console.log(JSON.stringify(items));
 
     const messages = (items as {id: string, message: string}[]).map((item) => {
       return {
